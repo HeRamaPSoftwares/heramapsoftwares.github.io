@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pro Advance Image Editor</title>
+
+  <!-- External Libraries -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- 20+ Google Fonts Added for Text Editing -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Roboto&family=Lato&family=Montserrat&family=Oswald&family=Raleway&family=Poppins&family=Nunito&family=Ubuntu&family=Playfair+Display&family=Merriweather&family=Pacifico&family=Dancing+Script&family=Caveat&family=Anton&family=Lobster&family=Bebas+Neue&family=Fjalla+One&family=Teko&family=Righteous&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-deep: #05050f;
+      --card-glass: rgba(16, 18, 27, 0.7);
+      --accent-cyan: #00f0ff;
+      --accent-pink: #ff007c;
+      --text-light: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-glow: rgba(0, 240, 255, 0.25);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-deep);
+      color: var(--text-light);
+      overflow-x: hidden;
+      user-select: none;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* === ANIMATED BACKGROUND ORBS === */
+    .bg-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(90px);
+      z-index: -1;
+      animation: floatOrb 10s infinite alternate ease-in-out;
+      pointer-events: none;
+    }
+    .orb-1 { width: 380px; height: 380px; background: rgba(0, 240, 255, 0.18); top: -80px; left: -80px; }
+    .orb-2 { width: 450px; height: 450px; background: rgba(255, 0, 124, 0.18); bottom: -100px; right: -80px; animation-delay: -5s; }
+    @keyframes floatOrb {
+      0% { transform: translateY(0) scale(1); }
+      100% { transform: translateY(40px) scale(1.08); }
+    }
+
+    /* === TOP NAVBAR === */
+    .top-nav {
+      height: 60px;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(5, 5, 15, 0.85);
+      border-bottom: 1px solid var(--border-glow);
+      backdrop-filter: blur(20px);
+      z-index: 1000;
+    }
+
+    .brand-logo {
+      font-weight: 800;
+      font-size: 20px;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .action-top-btn {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(255, 0, 124, 0.2));
+      color: var(--text-light);
+      border: 1px solid var(--border-glow);
+      border-radius: 25px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    .action-top-btn:hover { border-color: var(--accent-cyan); box-shadow: 0 0 20px rgba(0, 240, 255, 0.4); transform: translateY(-2px); }
+    .action-top-btn.save-mode { background: linear-gradient(90deg, var(--accent-cyan), #0096ff); color: #000; border: none; }
+
+    /* === WORKSPACE AREA === */
+    .workspace-wrapper {
+      flex: 1;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .empty-state-box {
+      text-align: center;
+      padding: 40px;
+      background: var(--card-glass);
+      border: 1px dashed var(--border-glow);
+      border-radius: 24px;
+      backdrop-filter: blur(15px);
+      cursor: pointer;
+      max-width: 320px;
+      transition: transform 0.3s;
+    }
+    .empty-state-box:hover { transform: scale(1.03); border-color: var(--accent-cyan); }
+    .empty-state-box i { font-size: 48px; color: var(--accent-cyan); margin-bottom: 15px; }
+    .empty-state-box p { margin: 0; font-size: 14px; color: var(--text-muted); }
+
+    .canvas-container {
+      position: relative;
+      max-width: 100%;
+      max-height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    #mainCanvas {
+      max-width: 100%;
+      max-height: calc(100vh - 220px);
+      object-fit: contain;
+      display: block;
+      border-radius: 12px;
+    }
+
+    /* === DYNAMIC OVERLAY LAYERS === */
+    .movable-layer {
+      position: absolute;
+      cursor: move;
+      border: 1.5px solid transparent; 
+      padding: 6px;
+      user-select: none;
+      z-index: 100;
+      transform-origin: center center;
+      touch-action: none;
+      display: inline-block;
+    }
+    
+    .movable-layer.selected {
+      border-color: #ffffff;
+      box-shadow: 0 0 8px rgba(0,0,0,0.5);
+    }
+
+    .layer-handle {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      z-index: 101;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    }
+    .movable-layer.selected .layer-handle { display: flex; }
+    
+    .handle-delete { top: -13px; left: -13px; background: #ff4a4a; color: white; cursor: pointer; }
+    .handle-resize { bottom: -13px; right: -13px; background: #ffffff; color: #000; cursor: nwse-resize; font-size: 14px; }
+
+    /* === EDIT PANEL === */
+    .edit-panel {
+      background: rgba(10, 10, 20, 0.9);
+      border-top: 1px solid var(--border-glow);
+      backdrop-filter: blur(20px);
+      z-index: 500;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sub-panel {
+      display: none;
+      padding: 15px 20px;
+      background: var(--card-glass);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      overflow-x: auto;
+      gap: 20px;
+      align-items: center;
+      scrollbar-width: none;
+    }
+    .sub-panel::-webkit-scrollbar { display: none; }
+    .sub-panel.active { display: flex; }
+
+    /* Sliders & Tools Styling */
+    .slider-box { display: flex; flex-direction: column; gap: 6px; min-width: 130px; text-align: center; }
+    .slider-box label { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+    .slider-box input[type="range"] { width: 100%; accent-color: var(--accent-cyan); cursor: pointer; }
+
+    .filter-card {
+      flex: 0 0 85px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+      cursor: pointer; border-radius: 12px; padding: 6px; border: 1px solid transparent; transition: all 0.2s;
+    }
+    .filter-card:hover, .filter-card.active { border-color: var(--accent-cyan); background: rgba(0, 240, 255, 0.08); }
+    .filter-preview-box { width: 70px; height: 70px; border-radius: 10px; background-size: cover; background-position: center; border: 1px solid rgba(255, 255, 255, 0.1); }
+    .filter-card span { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+
+    .tool-bar {
+      display: flex; overflow-x: auto; padding: 12px 15px; gap: 22px; white-space: nowrap; scrollbar-width: none;
+    }
+    .tool-bar::-webkit-scrollbar { display: none; }
+    .tool-btn {
+      background: transparent; border: none; color: var(--text-muted); font-size: 12px; font-weight: 600;
+      cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; transition: color 0.2s;
+    }
+    .tool-btn i { font-size: 20px; }
+    .tool-btn.active, .tool-btn:hover { color: var(--accent-cyan); text-shadow: 0 0 10px var(--accent-cyan); }
+    
+    /* Text Customization Elements */
+    .text-controls {
+      display: flex; gap: 10px; align-items: center; background: #1e1e2d; padding: 5px 10px; border-radius: 8px;
+    }
+    .text-controls input[type="text"] { background: transparent; border: none; color: white; outline: none; width: 150px; }
+    .text-controls select, .text-controls input[type="color"] { background: transparent; color: white; border: 1px solid var(--border-glow); border-radius: 4px; padding: 4px; outline: none;}
+    .text-controls select option { background: #1e1e2d; color: white; }
+    .text-controls input[type="color"] { width: 35px; height: 30px; padding: 0; cursor: pointer; }
+
+    /* Color Adjust Panel Elements */
+    .color-swatch-container { display: flex; gap: 15px; align-items: center; }
+    .color-swatch { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); transition: all 0.2s; flex-shrink: 0;}
+    .color-swatch.active { border: 2px solid white; box-shadow: 0 0 12px var(--accent-cyan); transform: scale(1.1); }
+
+    /* Advanced Effects Panel Elements */
+    .effect-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; min-width: 70px; }
+    .effect-icon { width: 55px; height: 55px; border-radius: 12px; background: rgba(255,255,255,0.05); display: flex; justify-content: center; align-items: center; font-size: 22px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; color: var(--text-light); }
+    .effect-btn:hover .effect-icon { border-color: var(--accent-cyan); background: rgba(0, 240, 255, 0.1); color: var(--accent-cyan); }
+    .effect-btn span { font-size: 11px; color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+
+    /* === PROGRESS LOADING OVERLAY MODAL === */
+    .loader-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(5, 5, 15, 0.9); backdrop-filter: blur(20px); z-index: 9999;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+    }
+    .loader-overlay.show { opacity: 1; pointer-events: auto; }
+    .spinner {
+      width: 70px; height: 70px; border: 4px solid rgba(0, 240, 255, 0.15); border-top-color: var(--accent-cyan);
+      border-right-color: var(--accent-pink); border-left-color: var(--accent-green); border-radius: 50%; 
+      animation: spin 0.6s linear infinite; margin-bottom: 20px;
+      box-shadow: 0 0 20px var(--accent-cyan);
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-text { 
+      font-weight: 800; font-size: 18px; text-align: center;
+      background: linear-gradient(90deg, var(--text-light), var(--accent-cyan)); 
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+
+  <!-- Colorful Progress Loader -->
+  <div id="loaderModal" class="loader-overlay">
+    <div class="spinner"></div>
+    <div id="loaderText" class="loader-text">Loading...</div>
+  </div>
+
+  <input type="file" id="imageInput" accept="image/*" onchange="handleImageImport(event)" style="display:none;">
+  <input type="file" id="pipInput" accept="image/*" onchange="spawnPipOverlay(event)" style="display:none;">
+
+  <div class="top-nav">
+    <div style="display: flex; align-items: center; gap: 15px;">
+      <!-- NEW BACK BUTTON TO INDEX.HTML -->
+      <a href="index.html" style="color: white; text-decoration: none; font-size: 20px;">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <span class="brand-logo">ProEditor Studio</span>
+    </div>
+    
+    <button id="topActionButton" class="action-top-btn" onclick="triggerTopAction()">
+      <i class="fa-solid fa-plus"></i> <span id="topBtnText">Import Photo</span>
+    </button>
+  </div>
+
+  <div class="workspace-wrapper" id="workspaceWrapper">
+    <div id="emptyState" class="empty-state-box" onclick="document.getElementById('imageInput').click()">
+      <i class="fa-solid fa-cloud-arrow-up"></i>
+      <h3>Select a Photo</h3>
+      <p>Tap here to import an image and unlock advanced editing tools.</p>
+    </div>
+
+    <!-- Dynamic Canvas Box: Layers will be added dynamically inside here -->
+    <div id="canvasBox" class="canvas-container" style="display:none;">
+      <img id="mainCanvas" src="" alt="Editing Target">
+    </div>
+  </div>
+
+  <div class="edit-panel" id="editPanel" style="opacity: 0.5; pointer-events: none;">
+
+    <div id="adjustPanel" class="sub-panel">
+      <div class="slider-box"><label>Brightness</label><input type="range" id="adj_brightness" min="-100" max="100" value="0" oninput="applyEffects()" onchange="saveHistory()"></div>
+      <div class="slider-box"><label>Contrast</label><input type="range" id="adj_contrast" min="-100" max="100" value="0" oninput="applyEffects()" onchange="saveHistory()"></div>
+      <div class="slider-box"><label>Saturation</label><input type="range" id="adj_saturation" min="-100" max="100" value="0" oninput="applyEffects()" onchange="saveHistory()"></div>
+      <div class="slider-box"><label>Blur</label><input type="range" id="adj_blur" min="0" max="20" value="0" oninput="applyEffects()" onchange="saveHistory()"></div>
+      <div class="slider-box"><label>Hue Rotate</label><input type="range" id="adj_hue" min="0" max="360" value="0" oninput="applyEffects()" onchange="saveHistory()"></div>
+      <div class="slider-box"><label>Sepia</label><input type="range" id="adj_sepia" min="0" max="100" value="0" oninput="applyEffects()" onchange="saveHistory()"></div>
+      <div class="slider-box"><label>Invert</label><input type="range" id="adj_invert" min="0" max="100" value="0" oninput="applyEffects()" onchange="saveHistory()"></div>
+      <div class="slider-box"><label>Grayscale</label><input type="range" id="adj_grayscale" min="0" max="100" value="0" oninput="applyEffects()" onchange="saveHistory()"></div>
+      <div class="slider-box"><label>Opacity</label><input type="range" id="adj_opacity" min="0" max="100" value="100" oninput="applyEffects()" onchange="saveHistory()"></div>
+      <div class="slider-box"><label>Warmth</label><input type="range" id="adj_warmth" min="-50" max="50" value="0" oninput="applyEffects()" onchange="saveHistory()"></div>
+      <div class="slider-box"><label>Exposure</label><input type="range" id="adj_exposure" min="-100" max="100" value="0" oninput="applyEffects()" onchange="saveHistory()"></div>
+      <div class="slider-box"><label>Vibrance</label><input type="range" id="adj_vibrance" min="-100" max="100" value="0" oninput="applyEffects()" onchange="saveHistory()"></div>
+      <button onclick="resetAdjustments()" style="background:var(--accent-pink); color:white; border:none; padding:6px 12px; border-radius:8px; font-weight:bold; cursor:pointer;">Reset</button>
+    </div>
+
+    <!-- Color Selection Panel -->
+    <div id="colorPanel" class="sub-panel">
+      <div class="slider-box" style="min-width: 140px;">
+        <label>Intensity / Glow</label>
+        <input type="range" id="selectiveColorSlider" min="-100" max="100" value="0" onchange="applySelectiveColor()">
+      </div>
+      <div class="color-swatch-container" id="colorSwatchesContainer"></div>
+    </div>
+
+    <div id="filterPanel" class="sub-panel"></div>
+
+    <!-- Advanced Effects Panel -->
+    <div id="advancedEffectsPanel" class="sub-panel">
+      <div style="display:flex; gap:15px;" id="advancedEffectsGrid"></div>
+    </div>
+
+    <div id="textPanel" class="sub-panel">
+      <div class="text-controls">
+        <textarea id="textInputVal" placeholder="Type here..." oninput="updateLiveText()" style="background: transparent; border: none; color: white; outline: none; width: 160px; height: 35px; resize: none; font-family: inherit; vertical-align: middle;"></textarea>
+        <input type="color" id="textColorVal" value="#ffffff" oninput="updateLiveText()">
+        <select id="textFontVal" onchange="updateLiveText()">
+          <option value="Inter">𝘐𝘯𝘵𝘦𝘳</option> <option value="Roboto">𝗥𝗼𝗯𝗼𝘁𝗼</option>
+          <option value="Lato">𝙇𝙖𝙩𝙤</option> <option value="Montserrat">𝙈𝙤𝙣𝙩𝙨𝙚𝙧𝙧𝙖𝙩</option>
+          <option value="Oswald">𝗢𝘀𝘄𝗮𝗹𝗱</option> <option value="Raleway">𝑅𝒶𝓁𝑒𝓌𝒶𝓎</option>
+          <option value="Poppins">𝗣𝗼𝗽𝗽𝗶𝗻𝘀</option> <option value="Nunito">𝓝𝓾𝓷𝓲𝓽𝓸</option>
+          <option value="Ubuntu">𝗨𝗯𝘂𝗻𝘁𝘂</option> <option value="Playfair Display">𝓟𝓵𝓪𝔂𝓯𝓪𝓲𝓻</option>
+          <option value="Merriweather">𝓜𝓮𝓻𝓻𝓲𝔀𝓮𝓪𝓽𝓱𝓮𝓻</option> <option value="Pacifico">𝓟𝓪𝓬𝓲𝓯𝓲𝓬𝓸</option>
+          <option value="Dancing Script">𝒟𝒶𝓃𝒸𝒾𝓃𝑔 𝒮𝒸𝓇𝒾𝓅𝓉</option> <option value="Caveat">𝒞𝒶𝓋𝑒𝒶𝓉</option>
+          <option value="Anton">𝗔𝗻𝘁𝗼𝗻</option> <option value="Lobster">𝓛𝓸𝓫𝓼𝓽𝓮𝓻</option>
+          <option value="Bebas Neue">𝘽𝙚𝙗𝙖𝙨 𝙉𝙚𝙪𝙚</option> <option value="Fjalla One">𝙁𝙟𝙖𝙡𝙡𝙖</option>
+          <option value="Teko">𝙏𝙚𝙠𝙤</option> <option value="Righteous">𝓡𝓲𝓰𝒽𝓉𝑒𝑜𝓊𝓈</option>
+        </select>
+      </div>
+      <button onclick="placeTextRightArrow()" style="background:var(--accent-cyan); color:#000; border:none; padding:8px 16px; border-radius:8px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:5px;">
+        Done <i class="fa-solid fa-check"></i>
+      </button>
+    </div>
+
+    <div id="cropPanel" class="sub-panel">
+      <button class="tool-btn" onclick="setCanvasRatio('free')"><i class="fa-solid fa-expand"></i>Free</button>
+      <button class="tool-btn" onclick="setCanvasRatio(NaN)"><i class="fa-solid fa-image"></i>Original</button>
+      <button class="tool-btn" onclick="setCanvasRatio(1)"><i class="fa-solid fa-square"></i>1:1</button>
+      <button class="tool-btn" onclick="setCanvasRatio(4/5)"><i class="fa-solid fa-rectangle-ad"></i>4:5</button>
+      <button class="tool-btn" onclick="setCanvasRatio(9/16)"><i class="fa-solid fa-mobile-screen"></i>9:16</button>
+      <button class="tool-btn" onclick="setCanvasRatio(16/9)"><i class="fa-solid fa-desktop"></i>16:9</button>
+      <div style="flex:1;"></div>
+      <button onclick="applyCrop()" style="background:var(--accent-cyan); color:#000; border:none; padding:8px 18px; border-radius:8px; font-weight:bold; cursor:pointer;">✔ Apply</button>
+      <button onclick="cancelCrop()" style="background:rgba(255,255,255,0.1); color:white; border:none; padding:8px 18px; border-radius:8px; font-weight:bold; cursor:pointer;">Cancel</button>
+    </div>
+
+    <div id="canvasPanel" class="sub-panel">
+      <button class="tool-btn" onclick="setCanvasRatio('free')"><i class="fa-solid fa-expand"></i>Free</button>
+      <button class="tool-btn" onclick="setCanvasRatio(1)"><i class="fa-solid fa-square"></i>1:1 (Insta)</button>
+      <button class="tool-btn" onclick="setCanvasRatio(4/5)"><i class="fa-solid fa-rectangle-ad"></i>4:5 (Post)</button>
+      <button class="tool-btn" onclick="setCanvasRatio(16/9)"><i class="fa-solid fa-desktop"></i>16:9 (YT)</button>
+      <button class="tool-btn" onclick="setCanvasRatio(9/16)"><i class="fa-solid fa-mobile-screen"></i>9:16 (Reels)</button>
+    </div>
+
+    <!-- MAIN TOOLBAR (WITH NEW AI BUTTONS & DELETE BUTTON) -->
+    <div class="tool-bar">
+      <button class="tool-btn" onclick="undoState()"><i class="fa-solid fa-arrow-rotate-left"></i>Undo</button>
+      <button class="tool-btn" onclick="redoState()"><i class="fa-solid fa-arrow-rotate-right"></i>Redo</button>
+      <div style="width:1px; height:30px; background:rgba(255,255,255,0.2); margin:0 5px;"></div>
+      
+      <button class="tool-btn" onclick="applyAIClean()" style="color: var(--accent-cyan);"><i class="fa-solid fa-wand-magic-sparkles"></i>AI Clean</button>
+      <button class="tool-btn" onclick="applyAIBeautify()" style="color: var(--accent-pink);"><i class="fa-solid fa-face-smile-beam"></i>AI Beautify</button>
+      <div style="width:1px; height:30px; background:rgba(255,255,255,0.2); margin:0 5px;"></div>
+      
+      <button class="tool-btn" onclick="openColorPanel()"><i class="fa-solid fa-palette"></i>Colors</button>
+      <button class="tool-btn" onclick="toggleSubPanel('adjustPanel')"><i class="fa-solid fa-sliders"></i>Adjust</button>
+      <button class="tool-btn" onclick="toggleSubPanel('filterPanel')"><i class="fa-solid fa-wand-magic"></i>Filter</button>
+      <button class="tool-btn" onclick="toggleSubPanel('advancedEffectsPanel')"><i class="fa-solid fa-layer-group"></i>Effects</button>
+      <button class="tool-btn" onclick="startCropMode()"><i class="fa-solid fa-crop-simple"></i>Crop</button>
+      <button class="tool-btn" onclick="activateTextTool()"><i class="fa-solid fa-font"></i>Text</button>
+      <button class="tool-btn" onclick="document.getElementById('pipInput').click()"><i class="fa-solid fa-images"></i>PIP</button>
+      <button class="tool-btn" onclick="toggleSubPanel('canvasPanel')"><i class="fa-solid fa-border-all"></i>Canvas</button>
+      <button class="tool-btn" onclick="rotateImage(90)"><i class="fa-solid fa-rotate-right"></i>Rotate</button>
+      <button class="tool-btn" onclick="flipImage('h')"><i class="fa-solid fa-arrows-left-right"></i>Flip H</button>
+      <button class="tool-btn" onclick="flipImage('v')"><i class="fa-solid fa-arrows-up-down"></i>Flip V</button>
+      <button class="tool-btn" onclick="resetAllEditor()" style="color:var(--accent-pink);"><i class="fa-solid fa-trash-arrow-up"></i>Reset All</button>
+      <div style="width:1px; height:30px; background:rgba(255,255,255,0.2); margin:0 5px;"></div>
+      
+      <!-- NEW PAGE REFRESH (DELETE) BUTTON -->
+      <button class="tool-btn" onclick="window.location.reload()" style="color: #ff4a4a;"><i class="fa-solid fa-trash-can"></i>Delete</button>
+    </div>
+  </div>
+
+  <script>
+    let originalImageSrc = null;
+    let currentImageSrc = null;
+    let hasImage = false;
+    let cropper = null;
+    let globalZIndex = 100;
+    let activeTarget = 'main'; 
+    let layerCounter = 0;
+
+    let stateStyles = {
+      main: { b: 0, c: 0, s: 0, blur: 0, h: 0, sep: 0, inv: 0, gray: 0, op: 100, w: 0, exp: 0, vib: 0, activeFilterCss: 'none' }
+    };
+
+    let layers = {}; 
+    let historyStack = [];
+    let historyIndex = -1;
+    let isRestoring = false;
+
+    // AI PERCENTAGE PROGRESS LOADER LOGIC
+    function runAIProgress(msg, processFunction) {
+      if(!hasImage) return;
+      document.getElementById("loaderModal").classList.add("show");
+      let progress = 1;
+      const textEl = document.getElementById("loaderText");
+      
+      const interval = setInterval(() => {
+        progress += Math.floor(Math.random() * 15) + 8; // Super fast increment
+        if(progress >= 100) progress = 100;
+        
+        textEl.innerHTML = `${msg} <br><span style="font-size: 32px; color: var(--accent-cyan); text-shadow: 0 0 15px var(--accent-cyan);">${progress}%</span>`;
+        
+        if(progress === 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            processFunction();
+            document.getElementById("loaderModal").classList.remove("show");
+            textEl.innerHTML = "Processing..."; // reset for future
+          }, 150);
+        }
+      }, 40); 
+    }
+
+    // 1. AI CLEAN LOGIC (Increases Detail/Sharpness WITHOUT altering colors)
+    function applyAIClean() {
+      runAIProgress("✨ AI Deep Cleaning...", () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const img = new Image();
+        img.onload = () => {
+            canvas.width = img.width; canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            const w = canvas.width, h = canvas.height;
+            const mix = 0.5; // Fine-tuned Sharpening intensity
+            const weights = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+            const kat = 3; const half = 1;
+            const dstData = ctx.createImageData(w, h);
+            const dstBuff = dstData.data;
+            const srcBuff = ctx.getImageData(0, 0, w, h).data;
+            
+            for (let i = 0; i < h; i++) {
+                for (let j = 0; j < w; j++) {
+                    const dstOff = (i * w + j) * 4;
+                    let r = 0, g = 0, b = 0;
+                    for (let cy = 0; cy < kat; cy++) {
+                        for (let cx = 0; cx < kat; cx++) {
+                            const scy = Math.min(Math.max(i + cy - half, 0), h - 1);
+                            const scx = Math.min(Math.max(j + cx - half, 0), w - 1);
+                            const srcOff = (scy * w + scx) * 4;
+                            const wt = weights[cy * kat + cx];
+                            r += srcBuff[srcOff] * wt;
+                            g += srcBuff[srcOff + 1] * wt;
+                            b += srcBuff[srcOff + 2] * wt;
+                        }
+                    }
+                    dstBuff[dstOff] = mix * r + (1 - mix) * srcBuff[dstOff];
+                    dstBuff[dstOff + 1] = mix * g + (1 - mix) * srcBuff[dstOff + 1];
+                    dstBuff[dstOff + 2] = mix * b + (1 - mix) * srcBuff[dstOff + 2];
+                    dstBuff[dstOff + 3] = srcBuff[dstOff + 3]; // Alpha kept original
+                }
+            }
+            ctx.putImageData(dstData, 0, 0);
+
+            currentImageSrc = canvas.toDataURL("image/jpeg", 0.95);
+            const targetEl = activeTarget.startsWith('pip_') ? document.getElementById(activeTarget + "_img") : document.getElementById("mainCanvas");
+            targetEl.src = currentImageSrc;
+            saveHistory();
+        };
+        img.src = currentImageSrc;
+      });
+    }
+
+    // 2. AI BEAUTIFY LOGIC (On-Device Local AI Smooth & Clear)
+    function applyAIBeautify() {
+      runAIProgress("🌟 AI Beautifying...", () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const img = new Image();
+        img.onload = () => {
+            canvas.width = img.width; canvas.height = img.height;
+            // Draw original
+            ctx.drawImage(img, 0, 0);
+            
+            // Add soft blur overlay to hide noise/blemishes (Frequency Separation approximation)
+            ctx.globalAlpha = 0.35;
+            ctx.filter = "blur(8px)";
+            ctx.drawImage(img, 0, 0);
+            
+            // Add subtle glow and contrast recovery
+            ctx.globalAlpha = 0.25;
+            ctx.globalCompositeOperation = 'screen';
+            ctx.filter = "brightness(120%) saturate(150%) contrast(110%)";
+            ctx.drawImage(img, 0, 0);
+
+            // Reset
+            ctx.globalAlpha = 1.0;
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.filter = 'none';
+
+            currentImageSrc = canvas.toDataURL("image/jpeg", 0.95);
+            const targetEl = activeTarget.startsWith('pip_') ? document.getElementById(activeTarget + "_img") : document.getElementById("mainCanvas");
+            targetEl.src = currentImageSrc;
+            saveHistory();
+        };
+        img.src = currentImageSrc;
+      });
+    }
+
+    const filterPresets = [
+      { name: 'Original', filter: 'none' },
+      { name: 'Soft Glow', filter: 'brightness(108%) contrast(104%) saturate(112%)' },
+      { name: 'Fair Glow', filter: 'brightness(118%) contrast(102%) saturate(108%)' },
+      { name: 'Glass Skin', filter: 'brightness(114%) contrast(106%) saturate(110%)' },
+      { name: 'Pink Glow', filter: 'brightness(110%) saturate(120%) hue-rotate(-6deg)' },
+      { name: 'Soft Red', filter: 'brightness(108%) contrast(106%) saturate(125%) hue-rotate(-18deg)' },
+      { name: 'Cyberpunk', filter: 'hue-rotate(180deg) contrast(130%) saturate(160%)' },
+      { name: '90s Retro', filter: 'sepia(40%) contrast(110%) brightness(105%) saturate(130%)' },
+      { name: 'Warm Gold', filter: 'sepia(25%) saturate(140%) brightness(108%)' },
+      { name: 'Cold Winter', filter: 'hue-rotate(190deg) saturate(80%) brightness(105%)' },
+      { name: 'Noir B&W', filter: 'grayscale(100%) contrast(150%)' },
+      { name: 'Emerald', filter: 'hue-rotate(80deg) saturate(140%)' },
+      { name: 'Sunset Glow', filter: 'sepia(50%) hue-rotate(-20deg) saturate(180%)' },
+      { name: 'Sepia Dream', filter: 'sepia(100%) contrast(90%)' },
+      { name: 'Neon Invert', filter: 'invert(100%) hue-rotate(180deg)' },
+      { name: 'Vintage 80s', filter: 'contrast(120%) brightness(90%) sepia(30%)' },
+      { name: 'Midnight', filter: 'brightness(80%) contrast(140%) hue-rotate(200deg)' },
+      { name: 'Pastel Cyan', filter: 'hue-rotate(150deg) brightness(115%) saturate(80%)' },
+      { name: 'Pop High', filter: 'saturate(200%) contrast(125%)' },
+      { name: 'Moody Dark', filter: 'brightness(75%) contrast(130%) saturate(90%)' },
+      { name: 'Soft Fade', filter: 'brightness(110%) contrast(85%) saturate(90%)' },
+      { name: 'Vaporwave', filter: 'hue-rotate(280deg) saturate(170%) contrast(110%)' }
+    ];
+
+    function rgbToHsl(r, g, b) {
+      r /= 255, g /= 255, b /= 255;
+      let max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+      if (max == min) { h = s = 0; } else {
+        let d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          case b: h = (r - g) / d + 4; break;
+        } h /= 6;
+      }
+      return [h * 360, s, l];
+    }
+    
+    function hslToRgb(h, s, l) {
+      h /= 360; let r, g, b;
+      if (s == 0) { r = g = b = l; } else {
+        const hue2rgb = (p, q, t) => {
+          if(t < 0) t += 1; if(t > 1) t -= 1;
+          if(t < 1/6) return p + (q - p) * 6 * t;
+          if(t < 1/2) return q; if(t < 2/3) return p + (q - p) * (2/3 - t) * 6; return p;
+        }
+        let q = l < 0.5 ? l * (1 + s) : l + s - l * s; let p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3); g = hue2rgb(p, q, h); b = hue2rgb(p, q, h - 1/3);
+      }
+      return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    }
+
+    const colorTargets = [
+      { name: "Face / Skin", hue: 25, css: "#ffc8b4" },
+      { name: "Red", hue: 0, css: "#ff0000" },
+      { name: "Yellow", hue: 60, css: "#ffff00" },
+      { name: "Green", hue: 120, css: "#00ff00" },
+      { name: "Cyan", hue: 180, css: "#00ffff" },
+      { name: "Blue", hue: 240, css: "#0000ff" },
+      { name: "Magenta", hue: 300, css: "#ff00ff" }
+    ];
+    let selectedColorTarget = 25; 
+    let tempColorBaseSrc = null;
+
+    // Upgraded with New AI Effects
+    const snapEffects = [
+      { name: "AI Cyberpunk", icon: "fa-city", cssFilter: "contrast(130%) saturate(150%) hue-rotate(180deg) brightness(90%)" },
+      { name: "AI Golden Hour", icon: "fa-sun", cssFilter: "sepia(40%) saturate(150%) contrast(110%) brightness(105%) hue-rotate(-15deg)" },
+      { name: "AI Deep Teal", icon: "fa-moon", cssFilter: "hue-rotate(160deg) saturate(120%) contrast(120%) brightness(85%)" },
+      { name: "AI Cinematic", icon: "fa-film", cssFilter: "contrast(125%) saturate(85%) sepia(25%) hue-rotate(-10deg)" },
+      { name: "AI Pop Art", icon: "fa-palette", cssFilter: "saturate(250%) contrast(140%) brightness(110%)" },
+      { name: "HDR Pro", icon: "fa-image", type: "canvas", fn: (d) => {
+           const contrast = 1.22; const saturation = 1.18; const vibrance = 1.25; const brightness = 8; const clarity = 1.08; const glow = 6;
+           for (let i = 0; i < d.length; i += 4) { let r = d[i]; let g = d[i+1]; let b = d[i+2]; r += brightness; g += brightness; b += brightness;
+           r = ((r - 128) * contrast) + 128; g = ((g - 128) * contrast) + 128; b = ((b - 128) * contrast) + 128;
+           if (r < 90) r *= 1.12; if (g < 90) g *= 1.12; if (b < 90) b *= 1.12;
+           if (r > 210) r -= (r - 210) * 0.45; if (g > 210) g -= (g - 210) * 0.45; if (b > 210) b -= (b - 210) * 0.45;
+           const gray = (r + g + b) / 3; r = gray + (r - gray) * vibrance; g = gray + (g - gray) * saturation; b = gray + (b - gray) * vibrance;
+           r *= clarity; g *= clarity; b *= clarity; r += glow; g += glow * 0.8; b += glow * 0.6; r *= 1.02; g *= 1.01; b *= 0.99;
+           d[i] = Math.max(0, Math.min(255, r)); d[i+1] = Math.max(0, Math.min(255, g)); d[i+2] = Math.max(0, Math.min(255, b)); } } },
+      { name: "Portrait Blur", icon: "fa-user-large-slash", type: "canvas", fn: (d, w, h, ctx) => {
+          let tCan = document.createElement('canvas'); tCan.width=w; tCan.height=h;
+          let tCtx = tCan.getContext('2d'); tCtx.putImageData(new ImageData(d,w,h),0,0);
+          ctx.filter = 'blur(8px)'; ctx.drawImage(tCan,0,0); ctx.filter = 'none';
+          let g = ctx.createRadialGradient(w/2,h/2,w/5,w/2,h/2,w/1.2);
+          g.addColorStop(0,"rgba(255,255,255,1)"); g.addColorStop(1,"rgba(255,255,255,0)");
+          let mCan = document.createElement('canvas'); mCan.width=w; mCan.height=h;
+          let mCtx = mCan.getContext('2d'); mCtx.fillStyle=g; mCtx.fillRect(0,0,w,h);
+          mCtx.globalCompositeOperation='source-in'; mCtx.drawImage(tCan,0,0);
+          ctx.drawImage(mCan,0,0); return false; }},
+      { name: "VHS Tape", icon: "fa-compact-disc", type: "canvas", fn: (d, w, h, ctx) => { let c = new Uint8ClampedArray(d); for(let i=0; i<d.length; i+=4) if(i+32 < d.length) { d[i]=c[i+32]; } ctx.putImageData(new ImageData(d,w,h),0,0); ctx.fillStyle="rgba(0,0,0,0.2)"; for(let y=0; y<h; y+=3) ctx.fillRect(0,y,w,1); return false; } },
+      { name: "CRT Scanlines", icon: "fa-tv", type: "canvas", fn: (d, w, h, ctx) => { ctx.fillStyle="rgba(0,0,0,0.3)"; for(let y=0; y<h; y+=4) ctx.fillRect(0,y,w,1); return false; } }, 
+      { name: "Snap Day", icon: "fa-calendar-day", action: () => addOverlayText(new Date().toLocaleDateString('en-US', {weekday: 'long'}), "#ffffff", "Dancing Script") },
+      { name: "Glitch Shift", icon: "fa-bolt", type: "canvas", fn: (d, w, h) => { let c = new Uint8ClampedArray(d); for(let i=0; i<d.length; i+=4) if(i+60 < d.length) { d[i]=c[i+60]; d[i+2]=c[Math.max(0,i-60+2)]; } } },
+      { name: "Film Grain", icon: "fa-braille", type: "canvas", fn: (d) => { for(let i=0; i<d.length; i+=4) { let n = (Math.random()-0.5)*40; d[i]=Math.min(255,Math.max(0,d[i]+n)); d[i+1]=Math.min(255,Math.max(0,d[i+1]+n)); d[i+2]=Math.min(255,Math.max(0,d[i+2]+n)); } } },
+      { name: "Dark Vignette", icon: "fa-circle-dot", type: "canvas", fn: (d, w, h, ctx) => { let g = ctx.createRadialGradient(w/2,h/2,w/4,w/2,h/2,w/1.2); g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(0,0,0,0.85)"); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); return false; } },
+      { name: "Light Vignette", icon: "fa-circle", type: "canvas", fn: (d, w, h, ctx) => { let g = ctx.createRadialGradient(w/2,h/2,w/4,w/2,h/2,w/1.2); g.addColorStop(0,"rgba(255,255,255,0)"); g.addColorStop(1,"rgba(255,255,255,0.7)"); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); return false; } },
+      { name: "Posterize", icon: "fa-layer-group", type: "canvas", fn: (d) => { for(let i=0; i<d.length; i+=4) { d[i]=Math.round(d[i]/64)*64; d[i+1]=Math.round(d[i+1]/64)*64; d[i+2]=Math.round(d[i+2]/64)*64; } } }
+    ];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      renderFilterCards();
+      initColorPanel();
+      initAdvancedEffects();
+    });
+
+    function bringToFront(layerId) {
+      globalZIndex++;
+      const el = document.getElementById(layerId);
+      if(el) el.style.zIndex = globalZIndex;
+    }
+
+    function setEditTarget(target) {
+      activeTarget = target;
+      let st = stateStyles[target];
+      if(!st) return;
+      document.getElementById("adj_brightness").value = st.b;
+      document.getElementById("adj_contrast").value = st.c;
+      document.getElementById("adj_saturation").value = st.s;
+      document.getElementById("adj_blur").value = st.blur;
+      document.getElementById("adj_hue").value = st.h;
+      document.getElementById("adj_sepia").value = st.sep;
+      document.getElementById("adj_invert").value = st.inv;
+      document.getElementById("adj_grayscale").value = st.gray;
+      document.getElementById("adj_opacity").value = st.op;
+      document.getElementById("adj_warmth").value = st.w;
+      document.getElementById("adj_exposure").value = st.exp;
+      document.getElementById("adj_vibrance").value = st.vib;
+      renderFilterCards();
+    }
+
+    function saveHistory() {
+      if(isRestoring || !hasImage) return;
+
+      const layersSnapshot = {};
+      document.querySelectorAll('.movable-layer').forEach(el => {
+        const id = el.id;
+        const isText = layers[id] && layers[id].type === 'text';
+        layersSnapshot[id] = {
+          ...layers[id],
+          val: isText ? document.getElementById(id + "_span")?.innerText : null,
+          color: isText ? document.getElementById(id + "_span")?.style.color : null,
+          font: isText ? document.getElementById(id + "_span")?.style.fontFamily : null,
+          src: !isText ? document.getElementById(id + "_img")?.src : null,
+          filter: !isText ? document.getElementById(id + "_img")?.style.filter : null
+        };
+      });
+
+      const state = {
+        img: currentImageSrc,
+        stateStyles: JSON.parse(JSON.stringify(stateStyles)),
+        layers: JSON.parse(JSON.stringify(layers)),
+        layersSnapshot: layersSnapshot,
+        layerCounter: layerCounter,
+        activeTarget: activeTarget
+      };
+      
+      if(historyIndex < historyStack.length - 1) historyStack = historyStack.slice(0, historyIndex + 1);
+      historyStack.push(state);
+      historyIndex++;
+    }
+
+    function undoState() {
+      if(historyIndex > 0) { historyIndex--; restoreState(historyStack[historyIndex]); }
+    }
+    function redoState() {
+      if(historyIndex < historyStack.length - 1) { historyIndex++; restoreState(historyStack[historyIndex]); }
+    }
+
+    function restoreState(s) {
+      isRestoring = true;
+      currentImageSrc = s.img;
+      document.getElementById("mainCanvas").src = currentImageSrc;
+      
+      stateStyles = JSON.parse(JSON.stringify(s.stateStyles));
+      layers = JSON.parse(JSON.stringify(s.layers));
+      layerCounter = s.layerCounter || layerCounter;
+
+      document.querySelectorAll('.movable-layer').forEach(el => el.remove());
+
+      if(s.layersSnapshot) {
+        Object.keys(s.layersSnapshot).forEach(id => {
+          const item = s.layersSnapshot[id];
+          const div = document.createElement('div');
+          div.id = id;
+          div.className = item.type === 'text' ? "movable-layer text-layer active" : "movable-layer pip-layer active";
+          
+          if(item.type === 'text') {
+            div.innerHTML = `
+              <div class="layer-handle handle-delete" onclick="removeLayer('${id}')"><i class="fa-solid fa-xmark"></i></div>
+             <span id="${id}_span" style="font-size: ${item.fontSize}px; font-weight: 800; color: ${item.color || '#ffffff'}; white-space: pre; text-shadow: 0 2px 10px rgba(0,0,0,0.8); font-family: ${item.font || "'Inter', sans-serif"};">${item.val || ''}</span>
+              <div class="layer-handle handle-resize" onmousedown="initCombinedTransform(event, '${id}')" ontouchstart="initCombinedTransform(event, '${id}')"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></div>
+            `;
+          } else {
+            div.innerHTML = `
+              <div class="layer-handle handle-delete" onclick="removeLayer('${id}')"><i class="fa-solid fa-xmark"></i></div>
+              <img id="${id}_img" src="${item.src}" style="width:${item.width}px; object-fit:contain; display:block; pointer-events:none; filter: ${item.filter || 'none'};">
+              <div class="layer-handle handle-resize" onmousedown="initCombinedTransform(event, '${id}')" ontouchstart="initCombinedTransform(event, '${id}')"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></div>
+            `;
+          }
+          document.getElementById("canvasBox").appendChild(div);
+          attachLayerClick(div, id);
+          applyLayerTransform(id);
+          attachLayerDrag(id);
+        });
+      }
+
+      setEditTarget(s.activeTarget || 'main');
+      applyEffects(true);
+      isRestoring = false;
+    }
+
+    document.getElementById("workspaceWrapper").addEventListener('click', function(e) {
+      if (e.target.id === 'workspaceWrapper' || e.target.id === 'mainCanvas' || e.target.id === 'canvasBox') {
+        document.querySelectorAll(".sub-panel").forEach(p => p.classList.remove("active"));
+        document.querySelectorAll(".movable-layer").forEach(el => el.classList.remove("selected"));
+        setEditTarget('main'); 
+        tempColorBaseSrc = null; 
+      }
+    });
+
+    function toggleSubPanel(panelId) {
+      killCropper();
+      if(panelId !== 'colorPanel') tempColorBaseSrc = null; 
+      const panel = document.getElementById(panelId);
+      const isOpen = panel.classList.contains("active");
+      document.querySelectorAll(".sub-panel").forEach(p => p.classList.remove("active"));
+      if (!isOpen) panel.classList.add("active");
+    }
+
+    function renderFilterCards() {
+      const panel = document.getElementById("filterPanel");
+      panel.innerHTML = "";
+      
+      let currentFilterCss = stateStyles[activeTarget] ? stateStyles[activeTarget].activeFilterCss : 'none';
+      let previewSrc = activeTarget.startsWith('pip_') ? document.getElementById(activeTarget + "_img").src : (currentImageSrc || 'https://via.placeholder.com/100');
+
+      filterPresets.forEach((p, idx) => {
+        const card = document.createElement("div");
+        card.className = "filter-card" + (p.filter === currentFilterCss || (idx===0 && currentFilterCss==='none') ? " active" : "");
+        card.onclick = () => selectFilter(p.filter, card);
+        card.innerHTML = `
+          <div class="filter-preview-box" style="filter: ${p.filter}; background-image: url('${previewSrc}');"></div>
+          <span>${p.name}</span>
+        `;
+        panel.appendChild(card);
+      });
+    }
+
+    function showLoader(msg) {
+      document.getElementById("loaderText").innerText = msg;
+      document.getElementById("loaderModal").classList.add("show");
+    }
+    function hideLoader() { document.getElementById("loaderModal").classList.remove("show"); }
+
+    function triggerTopAction() {
+      if (!hasImage) document.getElementById("imageInput").click();
+      else exportAndSavePhoto();
+    }
+
+    function handleImageImport(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      hasImage = true; 
+
+      runAIProgress("Importing Engine...", () => {
+          const url = URL.createObjectURL(file);
+          originalImageSrc = url; currentImageSrc = url;
+          document.getElementById("mainCanvas").src = url;
+          document.getElementById("emptyState").style.display = "none";
+          document.getElementById("canvasBox").style.display = "flex";
+          document.getElementById("editPanel").style.opacity = "1";
+          document.getElementById("editPanel").style.pointerEvents = "auto";
+          const topBtn = document.getElementById("topActionButton");
+          topBtn.classList.add("save-mode");
+          topBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> <span>Save Photo</span>`;
+          setEditTarget('main');
+          saveHistory(); 
+      });
+    }
+
+    function applyEffects(isTargetSwitch = false) {
+      if (!hasImage) return;
+      let st = stateStyles[activeTarget];
+      if(!st) return;
+
+      if (!isTargetSwitch) {
+        st.b = document.getElementById("adj_brightness").value;
+        st.c = document.getElementById("adj_contrast").value;
+        st.s = document.getElementById("adj_saturation").value;
+        st.blur = document.getElementById("adj_blur").value;
+        st.h = document.getElementById("adj_hue").value;
+        st.sep = document.getElementById("adj_sepia").value;
+        st.inv = document.getElementById("adj_invert").value;
+        st.gray = document.getElementById("adj_grayscale").value;
+        st.op = document.getElementById("adj_opacity").value;
+        st.w = document.getElementById("adj_warmth").value;
+        st.exp = document.getElementById("adj_exposure").value;
+        st.vib = document.getElementById("adj_vibrance").value;
+      }
+      let customChain = `brightness(${100 + Number(st.b) + Number(st.exp)}%) contrast(${100 + Number(st.c)}%) saturate(${100 + Number(st.s) + Number(st.vib)}%) blur(${st.blur}px) hue-rotate(${Number(st.h) + Number(st.w)}deg) sepia(${st.sep}%) invert(${st.inv}%) grayscale(${st.gray}%) opacity(${st.op}%) `;
+      const fullFilterStr = (st.activeFilterCss !== 'none' ? st.activeFilterCss + " " : "") + customChain;
+      let targetEl = activeTarget.startsWith('pip_') ? document.getElementById(activeTarget + "_img") : document.getElementById("mainCanvas");
+      if(targetEl) targetEl.style.filter = fullFilterStr;
+    }
+
+    function selectFilter(filterStr, cardEl) {
+      document.querySelectorAll(".filter-card").forEach(c => c.classList.remove("active"));
+      if (cardEl) cardEl.classList.add("active");
+      if(stateStyles[activeTarget]) {
+        stateStyles[activeTarget].activeFilterCss = filterStr;
+        applyEffects();
+        saveHistory(); 
+      }
+    }
+
+    function resetAdjustments() {
+      let st = stateStyles[activeTarget];
+      if(!st) return;
+      st.b = 0; st.c = 0; st.s = 0; st.blur = 0; st.h = 0; st.sep = 0; st.inv = 0; st.gray = 0; st.op = 100; st.w = 0; st.exp = 0; st.vib = 0;
+      setEditTarget(activeTarget);
+      applyEffects(true);
+      saveHistory();
+    }
+
+    function startCropMode() {
+      if (!hasImage) return;
+      toggleSubPanel("cropPanel");
+      const img = activeTarget.startsWith('pip_') ? document.getElementById(activeTarget + "_img") : document.getElementById("mainCanvas");
+      if (cropper) cropper.destroy();
+      cropper = new Cropper(img, {
+        viewMode: 1, autoCropArea: 1, dragMode: 'none', background: false,
+        ready: function() {
+          const filterStr = img.style.filter;
+          const cropCanvasImg = document.querySelector('.cropper-canvas img');
+          const cropViewImg = document.querySelector('.cropper-view-box img');
+          if (cropCanvasImg) cropCanvasImg.style.filter = filterStr;
+          if (cropViewImg) cropViewImg.style.filter = filterStr;
+        }
+      });
+    }
+
+    function applyCrop() {
+      if (!cropper) return;
+      showLoader("Cropping Image...");
+      setTimeout(() => {
+        const croppedUrl = cropper.getCroppedCanvas().toDataURL("image/jpeg", 0.95);
+        const targetImg = activeTarget.startsWith('pip_') ? document.getElementById(activeTarget + "_img") : document.getElementById("mainCanvas");
+        const currentFilter = targetImg.style.filter;
+        if (activeTarget.startsWith('pip_')) { targetImg.src = croppedUrl; } else { currentImageSrc = croppedUrl; targetImg.src = currentImageSrc; }
+        targetImg.style.filter = currentFilter;
+        killCropper();
+        renderFilterCards();
+        saveHistory(); 
+        hideLoader();
+      }, 400);
+    }
+
+    function cancelCrop() { killCropper(); }
+    
+    function killCropper() {
+      if (cropper) { cropper.destroy(); cropper = null; }
+      document.getElementById("cropPanel").classList.remove("active");
+    }
+    
+    function setCanvasRatio(ratio) {
+      if (!hasImage) return;
+      if (!cropper) startCropMode();
+      if (ratio === 'free') cropper.setAspectRatio(NaN);
+      else cropper.setAspectRatio(ratio);
+    }
+
+    function rotateImage(deg) {
+      if (!hasImage) return;
+      const targetImg = activeTarget.startsWith('pip_') ? document.getElementById(activeTarget + "_img") : document.getElementById("mainCanvas");
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const image = new Image();
+      image.onload = () => {
+        canvas.width = image.height; canvas.height = image.width;
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((deg * Math.PI) / 180);
+        ctx.drawImage(image, -image.width / 2, -image.height / 2);
+        const newSrc = canvas.toDataURL("image/jpeg", 0.95);
+        if (activeTarget.startsWith('pip_')) { targetImg.src = newSrc; } else { currentImageSrc = newSrc; targetImg.src = currentImageSrc; renderFilterCards(); }
+        saveHistory();
+      };
+      image.src = targetImg.src;
+    }
+
+    function flipImage(dir) {
+      if (!hasImage) return;
+      const targetImg = activeTarget.startsWith('pip_') ? document.getElementById(activeTarget + "_img") : document.getElementById("mainCanvas");
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const image = new Image();
+      image.onload = () => {
+        canvas.width = image.width; canvas.height = image.height;
+        ctx.translate(dir === 'h' ? canvas.width : 0, dir === 'v' ? canvas.height : 0);
+        ctx.scale(dir === 'h' ? -1 : 1, dir === 'v' ? -1 : 1);
+        ctx.drawImage(image, 0, 0);
+        const newSrc = canvas.toDataURL("image/jpeg", 0.95);
+        if (activeTarget.startsWith('pip_')) { targetImg.src = newSrc; } else { currentImageSrc = newSrc; targetImg.src = currentImageSrc; }
+        saveHistory();
+      };
+      image.src = targetImg.src;
+    }
+
+    function initColorPanel() {
+      const cont = document.getElementById('colorSwatchesContainer');
+      cont.innerHTML = "";
+      colorTargets.forEach(c => {
+        const div = document.createElement('div');
+        div.className = "color-swatch" + (c.hue === selectedColorTarget ? " active" : "");
+        div.style.backgroundColor = c.css;
+        div.title = c.name;
+        div.onclick = () => {
+          document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('active'));
+          div.classList.add('active');
+          selectedColorTarget = c.hue;
+          document.getElementById('selectiveColorSlider').value = 0;
+          tempColorBaseSrc = currentImageSrc; 
+        };
+        cont.appendChild(div);
+      });
+    }
+
+    function openColorPanel() {
+      if (!hasImage) return;
+      tempColorBaseSrc = currentImageSrc;
+      document.getElementById('selectiveColorSlider').value = 0;
+      toggleSubPanel('colorPanel');
+    }
+
+    function applySelectiveColor() {
+      if(!hasImage) return;
+      if(!tempColorBaseSrc) tempColorBaseSrc = currentImageSrc;
+      const val = parseInt(document.getElementById('selectiveColorSlider').value);
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.onload = () => {
+        canvas.width = img.width; canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        if (val !== 0) {
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+            let range = selectedColorTarget === 25 ? 40 : 30;
+            
+            for(let i=0; i<data.length; i+=4) {
+              let r = data[i], g = data[i+1], b = data[i+2];
+              let hsl = rgbToHsl(r, g, b);
+              let h = hsl[0], s = hsl[1], l = hsl[2];
+              let dist = Math.min(Math.abs(h - selectedColorTarget), 360 - Math.abs(h - selectedColorTarget));
+              
+              if(dist < range && s > 0.1) {
+                let effect = (range - dist) / range;
+                l = Math.max(0, Math.min(1, l + (val / 180) * effect)); 
+                s = Math.max(0, Math.min(1, s + (val / 250) * effect)); 
+                let rgb = hslToRgb(h, s, l);
+                data[i] = rgb[0]; data[i+1] = rgb[1]; data[i+2] = rgb[2];
+              }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+        const newSrc = canvas.toDataURL("image/jpeg", 0.95);
+        currentImageSrc = newSrc;
+        const targetImg = activeTarget.startsWith('pip_') ? document.getElementById(activeTarget + "_img") : document.getElementById("mainCanvas");
+        targetImg.src = currentImageSrc;
+        
+        saveHistory();
+      };
+      img.src = tempColorBaseSrc; 
+    }
+
+    function initAdvancedEffects() {
+      const grid = document.getElementById("advancedEffectsGrid");
+      grid.innerHTML = "";
+      snapEffects.forEach((ef, idx) => {
+        const div = document.createElement("div");
+        div.className = "effect-btn";
+        div.onclick = () => triggerAdvancedEffect(idx);
+        div.innerHTML = `
+          <div class="effect-icon"><i class="fa-solid ${ef.icon}"></i></div>
+          <span>${ef.name}</span>
+        `;
+        grid.appendChild(div);
+      });
+    }
+
+    function triggerAdvancedEffect(idx) {
+      if(!hasImage) return;
+      const ef = snapEffects[idx];
+      
+      if(!ef.type && !ef.cssFilter) {
+         if(ef.action) ef.action(); 
+      } else {
+         if (window.lastEffectHistoryIndex === historyIndex) {
+             undoState(); 
+         }
+
+         runAIProgress("Applying AI Filter...", () => {
+             const canvas = document.createElement('canvas');
+             const ctx = canvas.getContext('2d');
+             const img = new Image();
+             img.onload = () => {
+                 canvas.width = img.width; canvas.height = img.height;
+                 
+                 if (ef.cssFilter) {
+                    ctx.filter = ef.cssFilter;
+                    ctx.drawImage(img, 0, 0);
+                    ctx.filter = "none";
+                 } else {
+                    ctx.drawImage(img, 0, 0);
+                    if(ef.type === 'canvas') {
+                       const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                       let res = ef.fn(imgData.data, canvas.width, canvas.height, ctx);
+                       if(res !== false) ctx.putImageData(imgData, 0, 0);
+                    }
+                 }
+
+                 const newSrc = canvas.toDataURL("image/jpeg", 0.95);
+                 currentImageSrc = newSrc;
+                 const targetEl = activeTarget.startsWith('pip_') ? document.getElementById(activeTarget + "_img") : document.getElementById("mainCanvas");
+                 targetEl.src = currentImageSrc;
+                 
+                 saveHistory();
+                 window.lastEffectHistoryIndex = historyIndex;
+             };
+             img.src = currentImageSrc;
+         });
+      }
+    }
+
+    // MULTI-LAYER TEXT ADDITION
+    function activateTextTool() {
+      if (!hasImage) return;
+      toggleSubPanel('textPanel');
+
+      layerCounter++;
+      const layerId = 'text_' + layerCounter;
+
+      layers[layerId] = { relX: 0.5, relY: 0.5, rotation: 0, fontSize: 28, type: 'text' };
+
+      const div = document.createElement('div');
+      div.id = layerId;
+      div.className = "movable-layer text-layer active selected";
+      div.innerHTML = `
+        <div class="layer-handle handle-delete" onclick="removeLayer('${layerId}')"><i class="fa-solid fa-xmark"></i></div>
+        <span id="${layerId}_span" style="font-size: 28px; font-weight: 800; color: #ffffff; white-space: pre; text-shadow: 0 2px 10px rgba(0,0,0,0.8); font-family: 'Inter', sans-serif;">New Text</span>
+        <div class="layer-handle handle-resize" onmousedown="initCombinedTransform(event, '${layerId}')" ontouchstart="initCombinedTransform(event, '${layerId}')"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></div>
+      `;
+
+      document.getElementById("canvasBox").appendChild(div);
+      attachLayerClick(div, layerId);
+
+      document.querySelectorAll('.movable-layer').forEach(el => el.classList.remove('selected'));
+      div.classList.add('selected');
+
+      activeTarget = layerId;
+      document.getElementById("textInputVal").value = "";
+      document.getElementById("textInputVal").focus();
+
+      bringToFront(layerId);
+      applyLayerTransform(layerId);
+      attachLayerDrag(layerId);
+      saveHistory();
+    }
+
+    function addOverlayText(text, color, font) {
+       activateTextTool();
+       if (activeTarget && activeTarget.startsWith('text_')) {
+         document.getElementById("textInputVal").value = text;
+         document.getElementById("textColorVal").value = color;
+         document.getElementById("textFontVal").value = font;
+         updateLiveText();
+       }
+    }
+
+    function updateLiveText() {
+      if(!activeTarget || !activeTarget.startsWith('text_')) return;
+      const val = document.getElementById("textInputVal").value;
+      const color = document.getElementById("textColorVal").value;
+      const font = document.getElementById("textFontVal").value;
+
+      const display = document.getElementById(activeTarget + "_span");
+      if(display) {
+        display.innerText = val || " ";
+        display.style.color = color;
+        display.style.fontFamily = `"${font}", sans-serif`;
+      }
+    }
+
+    function placeTextRightArrow() {
+      if(activeTarget && activeTarget.startsWith('text_')) {
+        const el = document.getElementById(activeTarget);
+        if(el) el.classList.remove("selected");
+      }
+      document.getElementById("textPanel").classList.remove("active");
+      saveHistory();
+    }
+
+    // MULTI-LAYER PIP ADDITION
+    function spawnPipOverlay(e) {
+      const file = e.target.files[0];
+      if (!file || !hasImage) return;
+      const url = URL.createObjectURL(file);
+
+      layerCounter++;
+      const layerId = 'pip_' + layerCounter;
+
+      layers[layerId] = { relX: 0.5, relY: 0.5, rotation: 0, width: 120, type: 'pip' };
+      stateStyles[layerId] = { b: 0, c: 0, s: 0, blur: 0, h: 0, sep: 0, inv: 0, gray: 0, op: 100, w: 0, exp: 0, vib: 0, activeFilterCss: 'none' };
+
+      const div = document.createElement('div');
+      div.id = layerId;
+      div.className = "movable-layer pip-layer active selected";
+      div.innerHTML = `
+        <div class="layer-handle handle-delete" onclick="removeLayer('${layerId}')"><i class="fa-solid fa-xmark"></i></div>
+        <img id="${layerId}_img" src="${url}" style="width:120px; object-fit:contain; display:block; pointer-events:none;">
+        <div class="layer-handle handle-resize" onmousedown="initCombinedTransform(event, '${layerId}')" ontouchstart="initCombinedTransform(event, '${layerId}')"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></div>
+      `;
+
+      document.getElementById("canvasBox").appendChild(div);
+      attachLayerClick(div, layerId);
+
+      document.querySelectorAll('.movable-layer').forEach(el => el.classList.remove('selected'));
+      div.classList.add('selected');
+
+      bringToFront(layerId);
+      setEditTarget(layerId);
+      applyLayerTransform(layerId);
+      attachLayerDrag(layerId);
+      saveHistory();
+    }
+
+    function attachLayerClick(div, layerId) {
+      div.addEventListener('click', (ev) => {
+        if(ev.target.classList.contains('layer-handle')) return;
+        document.querySelectorAll('.movable-layer').forEach(el => el.classList.remove('selected'));
+        div.classList.add("selected");
+        bringToFront(layerId);
+        setEditTarget(layerId);
+        if(layers[layerId] && layers[layerId].type === 'text') {
+            toggleSubPanel('textPanel');
+            const span = document.getElementById(layerId + "_span");
+            if(span) document.getElementById("textInputVal").value = span.innerText;
+        }
+      });
+    }
+
+    function removeLayer(layerId) {
+      const el = document.getElementById(layerId);
+      if(el) el.remove();
+      delete layers[layerId];
+      delete stateStyles[layerId];
+      setEditTarget('main');
+      saveHistory();
+    }
+
+    function applyLayerTransform(layerId) {
+      const l = layers[layerId];
+      if (!l) return;
+      const el = document.getElementById(layerId);
+      if (!el) return;
+      el.style.left = (l.relX * 100) + "%";
+      el.style.top = (l.relY * 100) + "%";
+      el.style.transform = `translate(-50%, -50%) rotate(${l.rotation}deg)`;
+    }
+
+    function attachLayerDrag(layerId) {
+      const el = document.getElementById(layerId);
+      if(!el) return;
+      
+      const onStart = (e) => {
+        if (e.target.closest('.layer-handle')) return;
+        bringToFront(layerId); 
+        document.querySelectorAll('.movable-layer').forEach(m => m.classList.remove('selected'));
+        el.classList.add('selected');
+        setEditTarget(layerId);
+
+        const rect = document.getElementById("canvasBox").getBoundingClientRect();
+
+        const onMove = (ev) => {
+          const cX = ev.type.startsWith('touch') ? ev.touches[0].clientX : ev.clientX;
+          const cY = ev.type.startsWith('touch') ? ev.touches[0].clientY : ev.clientY;
+          layers[layerId].relX = Math.max(0, Math.min(1, (cX - rect.left) / rect.width));
+          layers[layerId].relY = Math.max(0, Math.min(1, (cY - rect.top) / rect.height));
+          applyLayerTransform(layerId);
+        };
+        const onEnd = () => {
+          document.removeEventListener("mousemove", onMove); document.removeEventListener("touchmove", onMove);
+          document.removeEventListener("mouseup", onEnd); document.removeEventListener("touchend", onEnd);
+          saveHistory();
+        };
+        document.addEventListener("mousemove", onMove); document.addEventListener("touchmove", onMove);
+        document.addEventListener("mouseup", onEnd); document.addEventListener("touchend", onEnd);
+      };
+      el.onmousedown = onStart; el.ontouchstart = onStart;
+    }
+
+    function initCombinedTransform(e, layerId) {
+      e.stopPropagation(); e.preventDefault();
+      const el = document.getElementById(layerId);
+      if(!el) return;
+
+      const rect = el.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2; const centerY = rect.top + rect.height / 2;
+      
+      const startX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+      const startY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+      const startDist = Math.sqrt(Math.pow(startX - centerX, 2) + Math.pow(startY - centerY, 2));
+      const startAngle = Math.atan2(startY - centerY, startX - centerX);
+      
+      const isText = layers[layerId].type === 'text';
+      const startSize = isText ? layers[layerId].fontSize : layers[layerId].width;
+      const startRot = layers[layerId].rotation;
+
+      const onMove = (ev) => {
+        const cX = ev.type.startsWith('touch') ? ev.touches[0].clientX : ev.clientX;
+        const cY = ev.type.startsWith('touch') ? ev.touches[0].clientY : ev.clientY;
+        const newAngle = Math.atan2(cY - centerY, cX - centerX);
+        const angleDiff = (newAngle - startAngle) * (180 / Math.PI);
+        layers[layerId].rotation = startRot + angleDiff;
+        const newDist = Math.sqrt(Math.pow(cX - centerX, 2) + Math.pow(cY - centerY, 2));
+        const scale = newDist / (startDist || 1);
+        
+        if (isText) {
+          layers[layerId].fontSize = Math.max(12, startSize * scale);
+          const span = document.getElementById(layerId + "_span");
+          if(span) span.style.fontSize = layers[layerId].fontSize + "px";
+        } else {
+          layers[layerId].width = Math.max(30, startSize * scale);
+          const img = document.getElementById(layerId + "_img");
+          if(img) img.style.width = layers[layerId].width + "px";
+        }
+        applyLayerTransform(layerId);
+      };
+
+      const onEnd = () => {
+        document.removeEventListener("mousemove", onMove); document.removeEventListener("touchmove", onMove);
+        document.removeEventListener("mouseup", onEnd); document.removeEventListener("touchend", onEnd);
+        saveHistory();
+      };
+      document.addEventListener("mousemove", onMove); document.addEventListener("touchmove", onMove);
+      document.addEventListener("mouseup", onEnd); document.addEventListener("touchend", onEnd);
+    }
+
+    // MULTI-LAYER RENDER ON EXPORT
+    function exportAndSavePhoto() {
+      if (!hasImage) return;
+      
+      runAIProgress("Rendering High Quality Photo...", () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext("2d");
+
+          ctx.filter = getComputedStyle(document.getElementById("mainCanvas")).filter;
+          ctx.drawImage(img, 0, 0);
+
+          const canvasBoxWidth = document.getElementById("canvasBox").clientWidth;
+
+          // RENDER ALL PIP LAYERS
+          document.querySelectorAll('.pip-layer').forEach(pLayer => {
+            const pipId = pLayer.id;
+            const pipImg = document.getElementById(pipId + "_img");
+            const l = layers[pipId];
+            if (pipImg && l) {
+              ctx.save();
+              ctx.filter = getComputedStyle(pipImg).filter; 
+              ctx.translate(canvas.width * l.relX, canvas.height * l.relY);
+              ctx.rotate((l.rotation * Math.PI) / 180);
+              
+              const pipRatio = l.width / canvasBoxWidth; 
+              const pipRenderWidth = canvas.width * pipRatio;
+              const pipRenderHeight = pipRenderWidth * (pipImg.naturalHeight / (pipImg.naturalWidth || 1));
+              
+              ctx.drawImage(pipImg, -pipRenderWidth/2, -pipRenderHeight/2, pipRenderWidth, pipRenderHeight);
+              ctx.restore();
+            }
+          });
+
+          // RENDER ALL TEXT LAYERS
+          document.querySelectorAll('.text-layer').forEach(tLayer => {
+            const textId = tLayer.id;
+            const span = document.getElementById(textId + "_span");
+            const l = layers[textId];
+            if (span && l) {
+              ctx.save();
+              ctx.filter = "none";
+              const textVal = span.innerText;
+              const fontName = span.style.fontFamily || "'Inter', sans-serif";
+              const fontSizeInCanvas = l.fontSize * (canvas.width / canvasBoxWidth);
+
+              ctx.font = `bold ${fontSizeInCanvas}px ${fontName}`;
+              ctx.fillStyle = span.style.color || "#ffffff";
+              ctx.shadowColor = "rgba(0,0,0,0.8)"; 
+              ctx.shadowBlur = 10;
+              
+              ctx.translate(canvas.width * l.relX, canvas.height * l.relY);
+              ctx.rotate((l.rotation * Math.PI) / 180);
+              ctx.textAlign = "center"; 
+              ctx.textBaseline = "middle";
+
+              const lines = textVal.split('\n');
+              const lineHeight = fontSizeInCanvas * 1.2;
+              const startY = -((lines.length - 1) * lineHeight) / 2;
+              lines.forEach((line, index) => {
+                ctx.fillText(line, 0, startY + (index * lineHeight));
+              });
+              ctx.restore();
+            }
+          });
+
+          const downloadUrl = canvas.toDataURL("image/jpeg", 0.95);
+          const link = document.createElement("a");
+          link.href = downloadUrl;
+          link.download = `ProEdit_${Date.now()}.jpg`;
+          document.body.appendChild(link); link.click(); document.body.removeChild(link);
+          
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 600);
+
+        };
+        img.src = currentImageSrc;
+      });
+    }
+
+    function resetAllEditor() {
+      if (!confirm("Are you sure you want to reset all edits?")) return;
+      currentImageSrc = originalImageSrc;
+      document.getElementById("mainCanvas").src = originalImageSrc;
+      document.querySelectorAll('.movable-layer').forEach(el => el.remove());
+      layers = {};
+      stateStyles = { main: { b: 0, c: 0, s: 0, blur: 0, h: 0, sep: 0, inv: 0, gray: 0, op: 100, w: 0, exp: 0, vib: 0, activeFilterCss: 'none' } };
+      setEditTarget('main');
+      resetAdjustments();
+      selectFilter('none', document.querySelectorAll(".filter-card")[0]);
+      saveHistory(); 
+    }
+  </script>
+</body>
+</html>
